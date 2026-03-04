@@ -213,6 +213,8 @@ mark { background: var(--brand-gold-light); padding: 1px 3px; border-radius: 3px
   .search-section { padding: 0 16px 16px; }
   .search-box { flex-direction: column; }
   .price-select { min-width: 100%; }
+  /* Ocultar filtro de lineas y lista de precios en movil */
+  #lineaFilter, #priceType { display: none; }
   .content { padding: 12px; }
   .results { grid-template-columns: 1fr; gap: 12px; }
   .card-body { padding: 16px; }
@@ -662,3 +664,4 @@ function showApp() {
 </div><!-- /app-content -->
 </body>
 </html>
+
