@@ -229,6 +229,21 @@ mark { background: var(--brand-gold-light); padding: 1px 3px; border-radius: 3px
 }
 @media (max-width: 380px) { .card-actions { flex-direction: column; } .qty-input { width: 100%; } .btn-add { width: 100%; } }
 
+/* ===== EQUIVALENCIAS ===== */
+.equiv-btn { display: inline-flex; align-items: center; gap: 5px; background: none; border: 1px dashed var(--brand-gold); color: var(--brand-gold); padding: 5px 10px; border-radius: var(--radius-md); font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 8px; transition: all var(--transition); font-family: inherit; }
+.equiv-btn:hover { background: var(--brand-gold); color: var(--brand-dark); }
+.equiv-panel { display: none; margin-top: 10px; border-top: 1px solid var(--border-light); padding-top: 10px; }
+.equiv-panel.show { display: block; }
+.equiv-panel-title { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.equiv-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--radius-sm); background: var(--bg-main); margin-bottom: 4px; font-size: 13px; }
+.equiv-item:last-child { margin-bottom: 0; }
+.equiv-marca { font-weight: 700; color: var(--brand-dark); min-width: 65px; font-size: 11px; text-transform: uppercase; }
+.equiv-clave { color: #8B5E3C; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.equiv-precio { font-weight: 700; color: var(--brand-dark); white-space: nowrap; }
+.equiv-add { background: var(--brand-gold); color: var(--brand-dark); border: none; width: 26px; height: 26px; border-radius: 50%; font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background var(--transition); }
+.equiv-add:hover { background: var(--brand-gold-hover); }
+@media (max-width: 768px) { .equiv-marca { min-width: 50px; } .equiv-item { font-size: 12px; gap: 5px; padding: 5px 6px; } }
+
 /* ===== LOGIN SCREEN ===== */
 .login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--brand-dark); padding: 20px; }
 .login-box { background: #fff; border-radius: var(--radius-lg); padding: 40px 32px; width: 360px; max-width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
@@ -369,6 +384,7 @@ mark { background: var(--brand-gold-light); padding: 1px 3px; border-radius: 3px
 <script>
 /* ===== APP STATE ===== */
 let productos = [], tiposPrecio = {}, lineasMap = {}, cart = [], currentResults = [], currentPage = 1;
+let equivMarcas = {}, equivGrupos = {}, equivArtGrupo = {}, prodIndex = {};
 const PAGE_SIZE = 20;
 let searchTimeout = null;
 
@@ -402,6 +418,14 @@ function loadData() {
   });
   document.getElementById('searchInfo').innerHTML = 'Escribe para buscar entre <strong>' + productos.length.toLocaleString() + '</strong> productos';
   document.getElementById('loading').style.display = 'none';
+  /* Build product index for quick lookup */
+  productos.forEach(p => { prodIndex[p.id] = p; });
+  /* Load equivalencias if available */
+  if (typeof EQUIV_DATA !== 'undefined') {
+    equivMarcas = EQUIV_DATA.marcas || {};
+    equivGrupos = EQUIV_DATA.grupos || {};
+    equivArtGrupo = EQUIV_DATA.artGrupo || {};
+  }
 }
 
 /* ===== SEARCH ===== */
@@ -486,6 +510,8 @@ function renderResults() {
       (op ? '<button class="card-prices-toggle" onclick="this.nextElementSibling.classList.toggle(\'show\')">Ver otros precios &#9662;</button><div class="card-prices-list">' + op + '</div>' : '') +
       '<div class="card-actions"><input type="number" class="qty-input" id="qty_' + p.id + '" value="' + (ic ? ic.qty : 1) + '" min="1" step="1">' +
       '<button class="btn-add' + (ic ? ' in-cart' : '') + '" onclick="addToCart(\'' + p.id + '\')">' + (ic ? 'Actualizar' : 'Agregar') + '</button></div>' +
+      getEquivBtn(p.id) +
+      '<div class="equiv-panel" id="equiv_' + p.id + '">' + getEquivPanel(p.id) + '</div>' +
       '</div></div>';
   }).join('');
   renderPag();
@@ -513,11 +539,48 @@ function renderPag() {
 }
 function goPage(p) { currentPage = p; renderResults(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
+/* ===== EQUIVALENCIAS ===== */
+function getEquivBtn(id) {
+  const gid = equivArtGrupo[id];
+  if (gid === undefined) return '';
+  const arts = equivGrupos[gid];
+  if (!arts) return '';
+  const others = arts.filter(a => a !== id && prodIndex[a]);
+  if (!others.length) return '';
+  return '<button class="equiv-btn" onclick="toggleEquiv(\'' + id + '\')">&#x1F504; ' + others.length + ' Cross Ref</button>';
+}
+function getEquivPanel(id) {
+  const gid = equivArtGrupo[id];
+  if (gid === undefined) return '';
+  const arts = (equivGrupos[gid] || []).filter(a => a !== id && prodIndex[a]);
+  if (!arts.length) return '';
+  const pt = document.getElementById('priceType').value;
+  let h = '<div class="equiv-panel-title">Cross Reference</div>';
+  arts.forEach(a => {
+    const p = prodIndex[a];
+    const marca = equivMarcas[a] || 'GENERICO';
+    const clave = (p.c && p.c[0]) || a;
+    const price = p.p[pt] || Object.values(p.p)[0] || 0;
+    h += '<div class="equiv-item">' +
+      '<span class="equiv-marca">' + marca + '</span>' +
+      '<span class="equiv-clave" title="' + p.n + '">' + clave + '</span>' +
+      '<span class="equiv-precio">' + fmt(price) + '</span>' +
+      '<button class="equiv-add" onclick="addToCart(\'' + a + '\')" title="Agregar ' + marca + '">+</button>' +
+      '</div>';
+  });
+  return h;
+}
+function toggleEquiv(id) {
+  const el = document.getElementById('equiv_' + id);
+  if (el) el.classList.toggle('show');
+}
+
 /* ===== CART ===== */
 function addToCart(id) {
-  const p = productos.find(x => x.id === id);
+  const p = prodIndex[id] || productos.find(x => x.id === id);
   if (!p) return;
-  const qty = parseFloat(document.getElementById('qty_' + id).value) || 1;
+  const qtyEl = document.getElementById('qty_' + id);
+  const qty = qtyEl ? (parseFloat(qtyEl.value) || 1) : 1;
   const ex = cart.find(c => c.id === id);
   if (ex) { ex.qty = qty; } else { cart.push({ id, nombre: p.n, unidad: p.u, precios: p.p, qty }); }
   updateBadge(); renderResults();
@@ -657,11 +720,17 @@ function showApp() {
   /* Load data dynamically after login */
   const s = document.createElement('script');
   s.src = 'datos.js';
-  s.onload = loadData;
+  s.onload = function() {
+    /* Load equivalencias after datos.js */
+    const eq = document.createElement('script');
+    eq.src = 'equivalencias.js';
+    eq.onload = loadData;
+    eq.onerror = loadData; /* If equiv file missing, still load without it */
+    document.head.appendChild(eq);
+  };
   document.head.appendChild(s);
 }
 </script>
 </div><!-- /app-content -->
 </body>
 </html>
-
