@@ -544,7 +544,7 @@ function getEquivBtn(id) {
   const gid = equivArtGrupo[id];
   if (gid === undefined) return '';
   const arts = equivGrupos[gid];
-  if (!arts) return '';
+  if (!arts || arts.length > 10) return '';
   const others = arts.filter(a => a !== id && prodIndex[a]);
   if (!others.length) return '';
   return '<button class="equiv-btn" onclick="toggleEquiv(\'' + id + '\')">&#x1F504; ' + others.length + ' Cross Ref</button>';
@@ -552,7 +552,9 @@ function getEquivBtn(id) {
 function getEquivPanel(id) {
   const gid = equivArtGrupo[id];
   if (gid === undefined) return '';
-  const arts = (equivGrupos[gid] || []).filter(a => a !== id && prodIndex[a]);
+  const allArts = equivGrupos[gid] || [];
+  if (allArts.length > 10) return '';
+  const arts = allArts.filter(a => a !== id && prodIndex[a]);
   if (!arts.length) return '';
   const pt = document.getElementById('priceType').value;
   let h = '<div class="equiv-panel-title">Cross Reference</div>';
