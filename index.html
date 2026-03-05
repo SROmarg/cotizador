@@ -444,7 +444,8 @@ function doSearch() {
     const n = p.n.toLowerCase();
     const ln = (lineasMap[p.l] || '').toLowerCase();
     const claves = (p.c || []).map(c => c.toLowerCase());
-    const matchWords = words.every(w => n.includes(w) || ln.includes(w) || claves.some(c => c.includes(w)));
+    const desc = (p.d || '').toLowerCase();
+    const matchWords = words.every(w => n.includes(w) || ln.includes(w) || claves.some(c => c.includes(w)) || desc.includes(w));
     const matchPrice = p.p[pt];
     const matchLinea = !lineaF || p.l === lineaF;
     return matchWords && matchPrice && matchLinea;
@@ -470,6 +471,13 @@ function doSearch() {
     words.forEach(w => {
       if (new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(n)) score += 25;
     });
+    /* Match in description = lower priority than name/code */
+    const desc = (p.d || '').toLowerCase();
+    if (desc) {
+      const descMatchCount = words.filter(w => desc.includes(w)).length;
+      if (descMatchCount === words.length) score += 5;
+      else score += descMatchCount;
+    }
     if (p.s > 0) score += 10;
     p._score = score;
   });
